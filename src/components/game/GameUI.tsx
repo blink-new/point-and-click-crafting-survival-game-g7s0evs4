@@ -291,7 +291,7 @@ export const GameUI: React.FC<GameUIProps> = ({
               {/* Time and Day Info */}
               <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-2">
-                  <timeIcon.type className={`w-5 h-5 ${timeColor}`} />
+                  {React.createElement(timeIcon, { className: `w-5 h-5 ${timeColor}` })}
                   <span className="text-sm font-medium">
                     {formatTime(gameState.timeOfDay)}
                   </span>

@@ -81,16 +81,30 @@ export const GameWorld: React.FC<GameWorldProps> = ({ gameState, onGameStateChan
         worldObjects,
       });
 
-      // Save to database
-      await blink.db.gameStates.create({
-        id: `game_${gameState.player.id}`,
-        userId: gameState.player.id,
-        worldObjects: JSON.stringify(worldObjects),
-        playerData: JSON.stringify(gameState.player),
-        dayCount: gameState.dayCount,
-        timeOfDay: gameState.timeOfDay,
-        createdAt: new Date(),
-      });
+      // Save to database (use upsert to avoid conflicts)
+      try {
+        await blink.db.gameStates.create({
+          id: `game_${gameState.player.id}`,
+          userId: gameState.player.id,
+          worldObjects: JSON.stringify(worldObjects),
+          playerData: JSON.stringify(gameState.player),
+          dayCount: gameState.dayCount,
+          timeOfDay: gameState.timeOfDay,
+          createdAt: new Date().toISOString(),
+        });
+      } catch (dbError) {
+        // If creation fails (likely due to existing record), try update
+        try {
+          await blink.db.gameStates.update(`game_${gameState.player.id}`, {
+            worldObjects: JSON.stringify(worldObjects),
+            playerData: JSON.stringify(gameState.player),
+            dayCount: gameState.dayCount,
+            timeOfDay: gameState.timeOfDay,
+          });
+        } catch (updateError) {
+          console.error('Failed to save game state:', updateError);
+        }
+      }
 
     } catch (error) {
       console.error('Failed to initialize world:', error);
@@ -194,10 +208,14 @@ export const GameWorld: React.FC<GameWorldProps> = ({ gameState, onGameStateChan
       onGameStateChange(updatedGameState);
       
       // Save progress
-      await blink.db.gameStates.update(`game_${gameState.player.id}`, {
-        worldObjects: JSON.stringify(updatedWorldObjects),
-        playerData: JSON.stringify(updatedGameState.player),
-      });
+      try {
+        await blink.db.gameStates.update(`game_${gameState.player.id}`, {
+          worldObjects: JSON.stringify(updatedWorldObjects),
+          playerData: JSON.stringify(updatedGameState.player),
+        });
+      } catch (updateError) {
+        console.error('Failed to save progress:', updateError);
+      }
       
     } catch (error) {
       console.error('Failed to harvest resource:', error);
